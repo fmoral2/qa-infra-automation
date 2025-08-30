@@ -17,19 +17,22 @@ Before running the playbook, you may need to set the `ANSIBLE_CONFIG` environmen
     ```bash
     export ANSIBLE_CONFIG=/path/to/go/src/github.com/rancher/qa-infra-automation/ansible/rke2/default/ansible.cfg
     ```
-1.  **Generate and Check Inventory:**
+
+1. **Generate and Check Inventory:**
     If using terraform to create your nodes, you can use the inventory-template.yml to dynamically generate the inventory.
     To check the inventory and view variables and the host graph run the following command.
+
     ```bash
     envsubst < inventory-template.yml > terraform-inventory.yml
     ansible-inventory -i terraform-inventory.yml --graph --vars
     ```
 
-2.  **Run the Playbook with Verbose output:**
+2. **Run the Playbook with Verbose output:**
 
     ```bash
     ansible-playbook -i terraform-inventory.yml rke2-playbook.yml -vvvv --extra-vars "@vars.yaml"
     ```
+
     The `-vvvv` flag provides very verbose output, which is helpful for debugging. The `--extra-vars "@vars.yaml"` flag loads variables from the `vars.yaml` file.
 
 ## Inventory
