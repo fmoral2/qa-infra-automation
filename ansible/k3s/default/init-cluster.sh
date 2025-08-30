@@ -1,11 +1,11 @@
 #!/bin/bash
 
 config="write-kubeconfig-mode: 644
-cni: ${CNI}
 tls-san:
   - ${FQDN}
   - ${KUBE_API_HOST}
 "
+
 if [ -n "${SERVER_FLAGS}" ]; then
   config="$config
 $(printf '%b' "${SERVER_FLAGS}")"
@@ -28,7 +28,7 @@ for role in "${ROLES[@]}"; do
   esac
 done
 
-# Configure RKE2 based on the role combinations
+# Configure K3s based on the role combinations
 if [[ "$has_etcd" == true && "$has_cp" == true && "$has_worker" == false ]]; then
   echo "Configuring etcd-cp node"
   config="$config
@@ -53,30 +53,26 @@ node-taint:
   - node-role.kubernetes.io/etcd:NoExecute
 "
 fi
-
+ 
 echo "${config}"
 
-mkdir -p /etc/rancher/rke2
-cat > /etc/rancher/rke2/config.yaml <<- EOF
+mkdir -p /etc/rancher/k3s
+cat > /etc/rancher/k3s/config.yaml <<- EOF
 ${config}
 EOF
 
-# Install RKE2 Server with the specified Kubernetes version
-envVars="INSTALL_RKE2_VERSION=${KUBERNETES_VERSION}"
-if [ -n "${INSTALL_METHOD}" ]; then
-  envVars="${envVars} INSTALL_RKE2_METHOD=${INSTALL_METHOD}"
-fi
+envVars="INSTALL_K3S_VERSION=${KUBERNETES_VERSION}"
 if [ -n "${CHANNEL}" ]; then
-  envVars="${envVars} INSTALL_RKE2_CHANNEL=${CHANNEL}"
+  envVars="${envVars} INSTALL_K3S_CHANNEL=${CHANNEL}"
 fi
 
-install_cmd="curl -sfL https://get.rke2.io | $envVars sh -"
+install_cmd="curl -sfL https://get.k3s.io | $envVars sh -"
 if ! eval "$install_cmd"; then
-    echo "Failed to install rke2-server"
+    echo "Failed to install k3s-server"
     exit 1
 fi
 
-systemctl enable rke2-server.service
-systemctl start rke2-server.service
+systemctl enable k3s.service
+systemctl start k3s.service
 
-sed -i "s/127.0.0.1/${FQDN}/g" /etc/rancher/rke2/rke2.yaml
+sed -i "s/127.0.0.1/${FQDN}/g" /etc/rancher/k3s/k3s.yaml

@@ -8,6 +8,10 @@ tls-san:
   - ${FQDN}
   - ${KUBE_API_HOST}
 "
+if [ -n "${SERVER_FLAGS}" ]; then
+  config="$config
+$(printf '%b' "${SERVER_FLAGS}")"
+fi
 
 # Parse NODE_ROLE into an array (comma-separated)
 IFS=',' read -r -a ROLES <<< "$NODE_ROLE"
@@ -70,7 +74,19 @@ ${config}
 EOF
 
 # Install RKE2 with the specified Kubernetes version
-curl -sfL https://get.rke2.io | INSTALL_RKE2_VERSION="${KUBERNETES_VERSION}" sh -
+envVars="INSTALL_RKE2_VERSION=${KUBERNETES_VERSION}"
+if [ -n "${INSTALL_METHOD}" ]; then
+  envVars="${envVars} INSTALL_RKE2_METHOD=${INSTALL_METHOD}"
+fi
+if [ -n "${CHANNEL}" ]; then
+  envVars="${envVars} INSTALL_RKE2_CHANNEL=${CHANNEL}"
+fi
+
+install_cmd="curl -sfL https://get.rke2.io | $envVars sh -"
+if ! eval "$install_cmd"; then
+    echo "Failed to install rke2-server"
+    exit 1
+fi
 
 systemctl enable rke2-server.service
 RET=1
