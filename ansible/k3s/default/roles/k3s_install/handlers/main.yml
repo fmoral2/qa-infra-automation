@@ -1,6 +1,4 @@
 ---
-# K3s Installation Role - Handlers
-
 - name: restart k3s
   systemd:
     name: k3s
@@ -14,3 +12,4 @@
     state: restarted
     daemon_reload: yes
   listen: restart k3s-agent
+  

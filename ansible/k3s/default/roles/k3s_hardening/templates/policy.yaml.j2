@@ -1,3 +1,4 @@
+---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -57,6 +58,7 @@ spec:
               name: kube-public
 ---
 # Reference https://rancher.com/docs/k3s/latest/en/security/hardening_guide/#networkpolicies
+{% if not ('traefik' in (role_server_flags | default('')) and 'disable' in (role_server_flags | default(''))) %}
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -70,22 +72,6 @@ spec:
     - {}
   policyTypes:
     - Ingress
----
-# Reference https://rancher.com/docs/k3s/latest/en/security/hardening_guide/#networkpolicies
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-all-metrics-server
-  namespace: kube-system
-spec:
-  podSelector:
-    matchLabels:
-      k8s-app: metrics-server
-  ingress:
-    - {}
-  policyTypes:
-    - Ingress
-
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -115,9 +101,22 @@ spec:
               kubernetes.io/metadata.name: kube-system
           podSelector:
             matchLabels:
-              # rke2
-              #app.kubernetes.io/name: rke2-ingress-nginx
-              # k3s
               app.kubernetes.io/name: traefik
+  policyTypes:
+    - Ingress
+{% endif %}
+---
+# Reference https://rancher.com/docs/k3s/latest/en/security/hardening_guide/#networkpolicies
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-all-metrics-server
+  namespace: kube-system
+spec:
+  podSelector:
+    matchLabels:
+      k8s-app: metrics-server
+  ingress:
+    - {}
   policyTypes:
     - Ingress

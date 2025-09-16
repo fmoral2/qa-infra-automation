@@ -1,0 +1,56 @@
+---
+apiVersion: apiserver.config.k8s.io/v1
+kind: AdmissionConfiguration
+plugins:
+  - name: PodSecurity
+    configuration:
+      apiVersion: pod-security.admission.config.k8s.io/v1
+      kind: PodSecurityConfiguration
+      defaults:
+        enforce: "{{ k3s_pss_enforce_level | default('restricted') }}"
+        enforce-version: "{{ k3s_pss_enforce_version | default('latest') }}"
+        audit: "{{ k3s_pss_audit_level | default('restricted') }}"
+        audit-version: "{{ k3s_pss_audit_version | default('latest') }}"
+        warn: "{{ k3s_pss_warn_level | default('restricted') }}"
+        warn-version: "{{ k3s_pss_warn_version | default('latest') }}"
+      exemptions:
+        usernames: {{ k3s_pss_exempt_users | default([]) | to_json }}
+        runtimeClasses: {{ k3s_pss_exempt_runtime_classes | default([]) | to_json }}
+        namespaces: {{ k3s_pss_exempt_namespaces | default([
+          'calico-apiserver',
+          'calico-system',
+          'cattle-alerting',
+          'cattle-csp-adapter-system',
+          'cattle-epinio-system',
+          'cattle-externalip-system',
+          'cattle-fleet-local-system',
+          'cattle-fleet-system',
+          'cattle-gatekeeper-system',
+          'cattle-global-data',
+          'cattle-global-nt',
+          'cattle-impersonation-system',
+          'cattle-istio',
+          'cattle-istio-system',
+          'cattle-logging',
+          'cattle-logging-system',
+          'cattle-monitoring-system',
+          'cattle-neuvector-system',
+          'cattle-prometheus',
+          'cattle-sriov-system',
+          'cattle-system',
+          'cattle-ui-plugin-system',
+          'cattle-windows-gmsa-system',
+          'cattle-provisioning-capi-system',
+          'cert-manager',
+          'cis-operator-system',
+          'fleet-default',
+          'ingress-nginx',
+          'istio-system',
+          'kube-node-lease',
+          'kube-public',
+          'kube-system',
+          'longhorn-system',
+          'rancher-alerting-drivers',
+          'security-scan',
+          'tigera-operator'
+        ]) | to_json }}

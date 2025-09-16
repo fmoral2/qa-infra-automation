@@ -11,6 +11,7 @@
     terraform_state_file: "{{ (lookup('env', 'TERRAFORM_NODE_SOURCE') | default('tofu/aws/modules/cluster_nodes')) + '/terraform.tfstate.d/' + terraform_workspace + '/terraform.tfstate' if use_terraform else '' }}"
 
     kube_api_host: "{{ lookup('cloud.terraform.tf_output', 'kube_api_host', state_file=terraform_state_file) if use_terraform else lookup('env', 'KUBE_API_HOST') }}"
+    fqdn: "{{ lookup('cloud.terraform.tf_output', 'fqdn', state_file=terraform_state_file) if use_terraform else (lookup('env', 'FQDN') | default('')) }}"
     ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
   tasks:
 
@@ -21,10 +22,12 @@
         timeout: 300
         state: started
       loop: "{{ groups['all'] }}"
+      when: hostvars[item]['ansible_host'] is defined and hostvars[item]['ansible_host'] != ''
 
 - hosts: "all"
   become: true
   gather_facts: false
+  strategy: free
   tasks:
     - name: Gather minimal OS facts
       setup:
@@ -91,37 +94,29 @@
         - /var/lib/rancher/k3s/server/logs
 
       when: '"cp" in ansible_role or "etcd" in ansible_role'
-    - name: Read hardening files content
-      slurp:
-        src: "./{{ item }}"
-      register: hardening_files
-      loop:
-        - policy.yaml
-        - audit.yaml
-        - cluster-level-pss.yaml
-        - ingresspolicy.yaml
-        - cis_master_config.yaml
-      delegate_to: localhost
-      run_once: true
+    # Hardening files now handled by templates in k3s_hardening role
 
     - name: Install K3s on initial cluster node
       include_role:
         name: k3s_install
       vars:
         k3s_node_type: cluster-init
-        kubernetes_version: "{{ kubernetes_version }}"
-        kube_api_host: "{{ kube_api_host }}"
-        fqdn: "{{ fqdn }}"
+        kubernetes_version: "{{ vars['kubernetes_version'] }}"
+        k3s_api_host: "{{ kube_api_host }}"
+        k3s_fqdn: "{{ fqdn }}"
         k3s_node_roles: "{{ ansible_role }}"
         public_ip: "{{ ansible_host }}"
-        server_flags: "{{ server_flags | default('') }}"
+        role_server_flags: "{{ server_flags | default('') }}"
         k3s_channel: "{{ channel | default('') }}"
-        # Pass hardening file contents as variables
-        policy_yaml_content: "{{ (hardening_files.results | selectattr('item', 'equalto', 'policy.yaml') | first).content | b64decode }}"
-        audit_yaml_content: "{{ (hardening_files.results | selectattr('item', 'equalto', 'audit.yaml') | first).content | b64decode }}"
-        cluster_level_pss_yaml_content: "{{ (hardening_files.results | selectattr('item', 'equalto', 'cluster-level-pss.yaml') | first).content | b64decode }}"
-        ingresspolicy_yaml_content: "{{ (hardening_files.results | selectattr('item', 'equalto', 'ingresspolicy.yaml') | first).content | b64decode }}"
-        cis_master_config_yaml_content: "{{ (hardening_files.results | selectattr('item', 'equalto', 'cis_master_config.yaml') | first).content | b64decode }}"
+      when: inventory_hostname == "master"
+
+    - name: Apply K3s hardening on initial cluster node
+      include_role:
+        name: k3s_hardening
+      vars:
+        k3s_node_type: cluster-init
+        role_server_flags: "{{ server_flags | default('') }}"
+        kubernetes_version: "{{ vars['kubernetes_version'] }}"
       when: inventory_hostname == "master"
 
 
@@ -148,6 +143,7 @@
 - hosts: "all"
   become: true
   gather_facts: false
+  strategy: free
   vars_files:
     - vars.yaml
   vars:
@@ -187,20 +183,7 @@
         - /var/lib/rancher/k3s/server/logs
       when: '"cp" in ansible_role or "etcd" in ansible_role'
 
-    - name: Read hardening files content for server nodes
-      slurp:
-        src: "./{{ item }}"
-      register: hardening_files_servers
-      loop:
-        - policy.yaml
-        - audit.yaml
-        - cluster-level-pss.yaml
-        - ingresspolicy.yaml
-        - cis_master_config.yaml
-      delegate_to: localhost
-      become: no
-      run_once: true
-      when: '"cp" in ansible_role or "etcd" in ansible_role'
+    # Hardening files now handled by templates in k3s_hardening role
 
     - name: Install K3s on server nodes
       include_role:
@@ -208,34 +191,56 @@
       vars:
         k3s_node_type: server
         kubernetes_version: "{{ kubernetes_version }}"
-        kube_api_host: "{{ kube_api_host }}"
-        fqdn: "{{ fqdn }}"
+        k3s_api_host: "{{ kube_api_host }}"
+        k3s_fqdn: "{{ fqdn }}"
         k3s_token: "{{ node_token }}"
         k3s_node_roles: "{{ ansible_role }}"
         public_ip: "{{ ansible_host }}"
-        server_flags: "{{ server_flags | default('') }}"
-        k3s_channel: "{{ channel | default('v1') }}"
-        # Pass hardening file contents as variables
-        policy_yaml_content: "{{ (hardening_files_servers.results | selectattr('item', 'equalto', 'policy.yaml') | first).content | b64decode }}"
-        audit_yaml_content: "{{ (hardening_files_servers.results | selectattr('item', 'equalto', 'audit.yaml') | first).content | b64decode }}"
-        cluster_level_pss_yaml_content: "{{ (hardening_files_servers.results | selectattr('item', 'equalto', 'cluster-level-pss.yaml') | first).content | b64decode }}"
-        ingresspolicy_yaml_content: "{{ (hardening_files_servers.results | selectattr('item', 'equalto', 'ingresspolicy.yaml') | first).content | b64decode }}"
-        cis_master_config_yaml_content: "{{ (hardening_files_servers.results | selectattr('item', 'equalto', 'cis_master_config.yaml') | first).content | b64decode }}"
+        role_server_flags: "{{ server_flags | default('') }}"
+        k3s_channel: "{{ channel | default('') }}"
+      when: 
+        - inventory_hostname != "master"
+        - '"cp" in ansible_role or "etcd" in ansible_role'
+
+    - name: Apply K3s hardening on server nodes
+      include_role:
+        name: k3s_hardening
+      vars:
+        k3s_node_type: server
+        role_server_flags: "{{ server_flags | default('') }}"
+        kubernetes_version: "{{ kubernetes_version }}"
       when: 
         - inventory_hostname != "master"
         - '"cp" in ansible_role or "etcd" in ansible_role'
         
+    - name: Apply K3s hardening on agent nodes (before installation)
+      include_role:
+        name: k3s_hardening
+      vars:
+        k3s_node_type: agent
+        role_server_flags: "{{ server_flags | default('') }}"
+        role_worker_flags: "{{ worker_flags | default('') }}"
+      when: ansible_role == "worker"
+
+    - name: Validate required variables for agent installation
+      assert:
+        that:
+          - kube_api_host is defined and kube_api_host != ''
+          - node_token is defined and node_token != ''
+        fail_msg: "Required variables missing: kube_api_host='{{ kube_api_host | default('UNDEFINED') }}', node_token='{{ node_token | default('UNDEFINED') }}'"
+      when: ansible_role == "worker"
+
     - name: Install K3s on agent nodes
       include_role:
         name: k3s_install
       vars:
         k3s_node_type: agent
         kubernetes_version: "{{ kubernetes_version }}"
-        kube_api_host: "{{ kube_api_host }}"
-        fqdn: "{{ fqdn }}"
+        k3s_api_host: "{{ kube_api_host }}"
+        k3s_fqdn: "{{ fqdn }}"
         k3s_token: "{{ node_token }}"
         public_ip: "{{ ansible_host }}"
-        worker_flags: "{{ worker_flags | default('') }}"
+        k3s_worker_flags: "{{ worker_flags | default('') }}"
         k3s_channel: "{{ channel | default('v1') }}"
       when: ansible_role == "worker"
 

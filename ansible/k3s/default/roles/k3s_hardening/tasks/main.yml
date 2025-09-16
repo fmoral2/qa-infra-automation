@@ -1,0 +1,74 @@
+---
+- name: Apply security hardening configuration
+  block:
+    - name: Create K3s server manifests directory
+      file:
+        path: "{{ k3s_manifests_dir | default('/var/lib/rancher/k3s/server/manifests') }}"
+        state: directory
+        mode: '0755'
+      when: k3s_node_type in ['cluster-init', 'server']
+
+    - name: Create policy.yaml manifest
+      template:
+        src: policy.yaml.j2
+        dest: "{{ k3s_manifests_dir | default('/var/lib/rancher/k3s/server/manifests') }}/policy.yaml"
+        mode: '0644'
+      when: k3s_node_type in ['cluster-init', 'server']
+
+    - name: Create audit.yaml configuration
+      template:
+        src: audit.yaml.j2
+        dest: "{{ k3s_server_dir | default('/var/lib/rancher/k3s/server') }}/audit.yaml"
+        mode: '0644'
+      when: k3s_node_type in ['cluster-init', 'server']
+
+    - name: Create cluster-level-pss.yaml configuration
+      template:
+        src: cluster-level-pss.yaml.j2
+        dest: "{{ k3s_server_dir | default('/var/lib/rancher/k3s/server') }}/cluster-level-pss.yaml"
+        mode: '0644'
+      when: k3s_node_type in ['cluster-init', 'server']
+
+    - name: Create ingresspolicy.yaml manifest
+      template:
+        src: ingresspolicy.yaml.j2
+        dest: "{{ k3s_manifests_dir | default('/var/lib/rancher/k3s/server/manifests') }}/ingresspolicy.yaml"
+        mode: '0644'
+      when: k3s_node_type in ['cluster-init', 'server']
+
+    - name: Create CIS master configuration
+      template:
+        src: cis_master_config.yaml.j2
+        dest: "{{ k3s_server_dir | default('/var/lib/rancher/k3s/server') }}/cis_master_config.yaml"
+        mode: '0644'
+      when: k3s_node_type in ['cluster-init', 'server']
+
+    - name: Apply kernel security parameters
+      sysctl:
+        name: "{{ item.key }}"
+        value: "{{ item.value }}"
+        state: present
+        reload: yes
+        sysctl_file: /etc/sysctl.d/90-kubelet.conf
+      loop:
+        - { key: 'vm.panic_on_oom', value: '0' }
+        - { key: 'vm.overcommit_memory', value: '1' }
+        - { key: 'kernel.panic', value: '10' }
+        - { key: 'kernel.panic_on_oops', value: '1' }
+        - { key: 'kernel.keys.root_maxbytes', value: '25000000' }
+
+    - name: Restart systemd-sysctl service
+      systemd:
+        name: systemd-sysctl
+        state: restarted
+
+  when: >
+    (role_server_flags is defined and role_server_flags != '' and 'protect-kernel-defaults' in role_server_flags) or
+    (worker_flags is defined and worker_flags != '' and 'protect-kernel-defaults' in worker_flags)
+
+- name: Display hardening status
+  debug:
+    msg: |
+      K3s Security Hardening: {{ 'ENABLED' if ((role_server_flags is defined and role_server_flags != '' and 'protect-kernel-defaults' in role_server_flags) or (worker_flags is defined and worker_flags != '' and 'protect-kernel-defaults' in worker_flags)) else 'DISABLED' }}
+      Node Type: {{ k3s_node_type }}
+      Protect Kernel Defaults: {{ 'YES' if (role_server_flags is defined and 'protect-kernel-defaults' in role_server_flags) else 'NO' }}

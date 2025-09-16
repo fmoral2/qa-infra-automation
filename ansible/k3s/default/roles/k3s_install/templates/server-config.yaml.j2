@@ -3,31 +3,43 @@
 {% if k3s_node_type == 'cluster-init' %}
 cluster-init: true
 {% else %}
+{% if k3s_api_host is defined and k3s_api_host != '' %}
+server: https://{{ k3s_api_host }}:6443
+{% elif kube_api_host is defined and kube_api_host != '' %}
 server: https://{{ kube_api_host }}:6443
+{% endif %}
 token: {{ k3s_token }}
 {% endif %}
 write-kubeconfig-mode: 644
 
 # TLS configuration
 tls-san:
-{% if fqdn is defined and fqdn != '' %}
+{% if k3s_fqdn is defined and k3s_fqdn != '' %}
+  - {{ k3s_fqdn }}
+{% elif fqdn is defined and fqdn != '' %}
   - {{ fqdn }}
 {% endif %}
+{% if k3s_api_host is defined and k3s_api_host != '' %}
+  - {{ k3s_api_host }}
+{% elif kube_api_host is defined and kube_api_host != '' %}
   - {{ kube_api_host }}
+{% endif %}
+{% if public_ip is defined and public_ip != '' %}
+  - {{ public_ip }}
+{% endif %}
+  - {{ ansible_host }}
+  - {{ inventory_hostname }}
+  - localhost
+  - 127.0.0.1
 
 {% if public_ip is defined and public_ip != '' %}
 # External IP configuration
 node-external-ip: {{ public_ip }}
 {% endif %}
 
-{% if server_flags is defined and server_flags != '' %}
+{% if k3s_server_flags is defined and k3s_server_flags != '' %}
 # Additional server flags
-{{ server_flags }}
-{% endif %}
-
-{% if k3s_security_hardening | default(false) %}
-# Security hardening configuration
-{{ k3s_cis_config }}
+{{ k3s_server_flags }}
 {% endif %}
 
 {% if k3s_node_roles is defined %}

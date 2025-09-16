@@ -12,7 +12,8 @@ vars.yaml
 *.env
 kubeconfig.yaml
 local.yaml
-
+ansible/k3s/default/test-static.sh
+ansible/k3s/default/test-env-aws
 .vscode/
 .idea/
 .kube/

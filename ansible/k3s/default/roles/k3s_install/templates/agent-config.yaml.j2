@@ -8,7 +8,10 @@ token: {{ k3s_token }}
 node-external-ip: {{ public_ip }}
 {% endif %}
 
-{% if worker_flags is defined and worker_flags != '' %}
+{% if k3s_worker_flags is defined and k3s_worker_flags != '' %}
 # Additional worker flags
-{{ worker_flags }}
+{{ k3s_worker_flags }}
+{% elif role_worker_flags is defined and role_worker_flags != '' %}
+# Additional worker flags
+{{ role_worker_flags }}
 {% endif %}

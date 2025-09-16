@@ -1,0 +1,18 @@
+---
+secrets-encryption: {{ k3s_secrets_encryption | default(true) }}
+kube-apiserver-arg:
+  - 'audit-log-path={{ k3s_audit_log_path | default("/var/lib/rancher/k3s/server/logs/audit.log") }}'
+  - 'audit-policy-file={{ k3s_audit_policy_file | default("/var/lib/rancher/k3s/server/audit.yaml") }}'
+  - 'audit-log-maxage={{ k3s_audit_log_maxage | default(30) }}'
+  - 'audit-log-maxbackup={{ k3s_audit_log_maxbackup | default(10) }}'
+  - 'audit-log-maxsize={{ k3s_audit_log_maxsize | default(100) }}'
+  - 'request-timeout={{ k3s_request_timeout | default("300s") }}'
+  - 'service-account-lookup={{ k3s_service_account_lookup | default(true) }}'
+  - 'enable-admission-plugins={{ k3s_admission_plugins | default("NodeRestriction,PodSecurity,NamespaceLifecycle,ServiceAccount") }}'
+  - 'admission-control-config-file={{ k3s_admission_control_config | default("/var/lib/rancher/k3s/server/cluster-level-pss.yaml") }}'
+kube-controller-manager-arg:
+  - 'terminated-pod-gc-threshold={{ k3s_terminated_pod_gc_threshold | default(10) }}'
+  - 'use-service-account-credentials={{ k3s_use_service_account_credentials | default(true) }}'
+kubelet-arg:
+  - 'streaming-connection-idle-timeout={{ k3s_streaming_connection_timeout | default("5m") }}'
+  - 'make-iptables-util-chains={{ k3s_make_iptables_util_chains | default(true) }}'
