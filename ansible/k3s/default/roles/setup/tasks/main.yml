@@ -1,0 +1,75 @@
+---
+- name: Check python3
+  raw: |
+    set -e
+    if command -v python3 >/dev/null 2>&1; then
+      python3 -c 'import sys, json; print(json.dumps({"major": sys.version_info.major, "minor": sys.version_info.minor, "path": sys.executable}))'
+    else
+      echo MISSING
+    fi
+  register: pyprobe
+  changed_when: false
+
+- name: Parse python3 results
+  set_fact:
+    _py_missing: "{{ 'MISSING' in pyprobe.stdout }}"
+    _py_info: "{{ (pyprobe.stdout is search('^{')) | ternary(pyprobe.stdout | from_json, {}) }}"
+    _py_major: "{{ _py_info.major | default(0) | int }}"
+    _py_minor: "{{ _py_info.minor | default(0) | int }}"
+
+- name: Detect OS family
+  raw: |
+    . /etc/os-release
+    echo "${ID}|${ID_LIKE}|${VERSION_ID}"
+  register: osr
+  changed_when: false
+
+- name: Set OS detection facts
+  set_fact:
+    _os_id:   "{{ (osr.stdout | default('||')).split('|')[0] | lower }}"
+    _os_like: "{{ (osr.stdout | default('||')).split('|')[1] | lower }}"
+    _os_ver:  "{{ (osr.stdout | default('||')).split('|')[2] }}"
+
+- name: Debian/Ubuntu | install/upgrade python3 if missing
+  raw: |
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -y
+    apt-get install -y python3
+  when: _os_id in ['debian','ubuntu'] and (_py_missing or (_py_major < 3) or (_py_major == 3 and _py_minor < 8))
+
+- name: RHEL/Rocky/Alma | install python39 if missing
+  raw: |
+    if command -v dnf >/dev/null 2>&1; then
+      dnf -y module enable python39 || true
+      dnf -y install python39 || dnf -y install python3
+    else
+      yum -y install python39 || yum -y install python3
+    fi
+  when: (_os_id in ['rhel','centos','rocky','almalinux','ol'] or 'rhel' in _os_like)
+        and (_py_missing or (_py_major < 3) or (_py_major == 3 and _py_minor < 8))
+
+- name: SUSE/SLES | prefer python311 if missing
+  raw: |
+    zypper -n refresh || true
+    zypper -n install -y python311 || zypper -n install -y python3 || true
+  when: (_os_id in ['sles','suse','opensuse-leap','opensuse'] or 'suse' in _os_like)
+        and (_py_missing or (_py_major < 3) or (_py_major == 3 and _py_minor < 8))
+
+- name: Discover python path
+  raw: |
+    for p in python3.11 python3.10 python3.9 python3; do
+      if command -v "$p" >/dev/null 2>&1; then echo "$(command -v $p)"; exit 0; fi
+    done
+    echo /usr/bin/python3
+  register: pywhich
+  changed_when: false
+
+- name: Set Python interpreter
+  set_fact:
+    ansible_python_interpreter: "{{ pywhich.stdout | trim }}"
+- meta: reset_connection
+
+- name: Gather facts
+  setup:
+
+
