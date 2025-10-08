@@ -25,6 +25,9 @@
           - cni is defined
           - cni | length > 0
         fail_msg: "Required variables not defined. Please ensure kubernetes_version, kube_api_host, and cni are set in vars.yaml or environment variables"
+      tags:
+        - validate
+        - always
 
     - name: Wait for SSH on node
       wait_for:

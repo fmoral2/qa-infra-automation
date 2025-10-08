@@ -1,0 +1,6 @@
+---
+# RKE2 with missing required variables (should fail validation)
+kubernetes_version: 'v1.32.1+rke2r1'
+# Missing: cni, kube_api_host
+kubeconfig_file: './kubeconfig.yaml'
+

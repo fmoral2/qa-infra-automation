@@ -1,0 +1,6 @@
+---
+# K3s with channel option
+kubernetes_version: 'v1.30.0+k3s1'
+kubeconfig_file: './kubeconfig.yaml'
+k3s_channel: 'testing'
+

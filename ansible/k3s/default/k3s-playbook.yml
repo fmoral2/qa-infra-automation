@@ -19,6 +19,9 @@
           - kube_api_host is defined
           - kube_api_host | length > 0
         fail_msg: "Required variables not defined. Please ensure kubernetes_version and kube_api_host are set in vars.yaml or environment variables"
+      tags:
+        - validate
+        - always
 
     - name: Wait for SSH on node(s)
       wait_for:

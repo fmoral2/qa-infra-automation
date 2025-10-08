@@ -22,3 +22,9 @@ ansible/rke2/airgap/playbooks/debug/*.txt
 ansible/rke2/airgap/playbooks/*.txt
 terraform-inventory.yml
 .ansible/.lock
+
+# Test artifacts
+tests/inventory/test-hosts.yml
+tests/*.log
+tests/*.retry
+*.test.yml

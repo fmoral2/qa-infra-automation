@@ -1,0 +1,6 @@
+---
+# RKE2 with commit hash version (tests INSTALL_RKE2_COMMIT)
+kubernetes_version: 'f0f0ffd24dc607ea4577f836ea36301aa091c749'
+kubeconfig_file: './kubeconfig.yaml'
+cni: 'calico'
+

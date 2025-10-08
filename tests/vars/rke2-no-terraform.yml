@@ -1,0 +1,7 @@
+---
+# RKE2 without Terraform - using environment variables
+kubernetes_version: 'v1.32.1+rke2r1'
+kubeconfig_file: './kubeconfig.yaml'
+cni: 'calico'
+# kube_api_host and FQDN from env vars
+

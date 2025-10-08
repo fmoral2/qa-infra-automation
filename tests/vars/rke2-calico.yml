@@ -1,0 +1,6 @@
+---
+# RKE2 with Calico CNI
+kubernetes_version: 'v1.32.1+rke2r1'
+kubeconfig_file: './kubeconfig.yaml'
+cni: 'calico'
+

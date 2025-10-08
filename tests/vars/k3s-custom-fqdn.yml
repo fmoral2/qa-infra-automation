@@ -1,0 +1,7 @@
+---
+# K3s with custom FQDN
+kubernetes_version: 'v1.30.0+k3s1'
+kubeconfig_file: './kubeconfig.yaml'
+k3s_channel: 'stable'
+# kube_api_host and FQDN from env vars
+

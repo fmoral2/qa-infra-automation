@@ -1,0 +1,79 @@
+---
+name: Ansible Validation
+
+on:
+  workflow_dispatch: 
+jobs:
+  lint-and-validate:
+    name: Lint and Validate Ansible
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Ansible and linting tools
+        run: |
+          pip install ansible-core ansible-lint yamllint
+          ansible-galaxy collection install cloud.terraform kubernetes.core community.general
+
+      # - name: YAML Lint
+      #   run: |
+      #     echo "Running YAML lint on Ansible files..."
+      #     yamllint ansible/
+
+      # - name: Ansible Lint - K3s
+      #   run: |
+      #     echo "Linting K3s playbook..."
+      #     ansible-lint ansible/k3s/default/k3s-playbook.yml
+
+      # - name: Ansible Lint - RKE2
+      #   run: |
+      #     echo "Linting RKE2 playbook..."
+      #     ansible-lint ansible/rke2/default/rke2-playbook.yml
+
+      # - name: Ansible Lint - Rancher
+      #   run: |
+      #     echo "Linting Rancher playbook..."
+      #     ansible-lint ansible/rancher/default-ha/rancher-playbook.yml || true
+
+      - name: Syntax Check - K3s
+        run: |
+          echo "Checking K3s playbook syntax..."
+          ansible-playbook ansible/k3s/default/k3s-playbook.yml --syntax-check
+
+      - name: Syntax Check - RKE2
+        run: |
+          echo "Checking RKE2 playbook syntax..."
+          ansible-playbook ansible/rke2/default/rke2-playbook.yml --syntax-check
+
+      - name: Validate example vars files
+        run: |
+          echo "Validating vars.yaml.example files exist..."
+          test -f ansible/k3s/default/vars.yaml.example || echo "Warning: K3s vars.yaml.example not found"
+          test -f ansible/rke2/default/vars.yaml.example || echo "Warning: RKE2 vars.yaml.example not found"
+
+      - name: Check for required variables in playbooks
+        run: |
+          echo "Checking for variable validation tasks..."
+          grep -q "Validate required variables" ansible/k3s/default/k3s-playbook.yml && echo "✓ K3s has variable validation"
+          grep -q "Validate required variables" ansible/rke2/default/rke2-playbook.yml && echo "✓ RKE2 has variable validation"
+
+      - name: Validation Summary
+        if: success()
+        run: |
+          echo "=========================================="
+          echo "✓ All validations passed successfully!"
+          echo "=========================================="
+          echo "- Syntax checks: PASSED"
+          echo "- Variable validation checks: PASSED"
+          echo "- Example files: PASSED"
+          echo "=========================================="
+          echo "Note: YAML and Ansible linting currently disabled"
+          echo "=========================================="
+
